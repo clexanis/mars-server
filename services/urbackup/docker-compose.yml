@@ -1,0 +1,53 @@
+version: "3.7"
+
+services:
+  ### Urbacker server: Client/Server Open Source Network Backup for Windows, MacOS and Linux ###
+  urbackup-server:
+    image: uroni/urbackup-server
+    container_name: urbackup-server
+    restart: always
+    environment:
+      - PUID=${PUID}
+      - PGID= ${PGID}
+      - TZ=${TZ}
+    ports:
+      - 55415:55415/tcp
+    volumes:
+      - ${VOLUME_DIR}/urbackup-server:/backups
+    labels:
+      ## Watchtower configuration ##
+      - com.centurylinklabs.watchtower.enable=true
+
+      ## Diun configuration ##
+      - diun.enable=true
+
+      ## Traefik configuration ##
+      # Enable Traefik #
+      - traefik.enable=true
+      - traefik.docker.network=traefik-network
+
+      # Set entrypoint port #
+      - traefik.http.services.netdata.loadbalancer.server.port=55414
+
+      # Set HTTP domain and HTTP -> HTTPS redirection #
+      - traefik.http.routers.netdata.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.netdata.entrypoints=web
+      - traefik.http.routers.netdata.middlewares=https-redirect@file
+
+      # Set HTTPS domain #
+      - traefik.http.routers.netdata-secure.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.netdata-secure.entrypoints=websecure
+      - traefik.http.routers.netdata-secure.middlewares=authelia@docker
+    # Uncomment the following two lines if you're using BTRFS support
+    #cap_add:
+    #  - SYS_ADMIN
+    # Uncomment the following two lines if you're using ZFS support
+    #devices:
+    #  - /dev/zfs:/dev/zfs
+
+networks:
+  default:
+    name: urbackup-server-network
+  traefik-network:
+    name: traefik-network
+    external: true
